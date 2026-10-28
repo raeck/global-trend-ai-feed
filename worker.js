@@ -3,7 +3,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // AI 크롤러 초대장: robots.txt (GPTBot, ClaudeBot, PerplexityBot 등 전면 허용 및 피드 위치 안내)
+    // 1. IndexNow API Key 검증 엔드포인트
+    if (path === "/e3a7c8b2d1f44a95a1c2e3f4a5b6c7d8.txt") {
+      return new Response("e3a7c8b2d1f44a95a1c2e3f4a5b6c7d8", {
+        headers: { "Content-Type": "text/plain; charset=utf-8" }
+      });
+    }
+
+    // 2. AI 크롤러 초대장: robots.txt (GPTBot, ClaudeBot, PerplexityBot 등 전면 허용)
     if (path === "/robots.txt") {
       const robots = `User-agent: *
 Allow: /
@@ -28,7 +35,7 @@ Sitemap: ${url.origin}/sitemap.xml
       return new Response(robots, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     }
 
-    // AI 검색엔진 색인 지도: sitemap.xml
+    // 3. AI 검색엔진 색인 지도: sitemap.xml
     if (path === "/sitemap.xml") {
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -51,7 +58,7 @@ Sitemap: ${url.origin}/sitemap.xml
       return new Response(sitemap, { headers: { "Content-Type": "application/xml; charset=utf-8" } });
     }
 
-    // 카테고리 대폭 확장 (국내 주요 뉴스 + 글로벌 속보 + 테크/AI + 비즈니스/금융 + 과학)
+    // 4. 카테고리 (국내 헤드라인, 글로벌 속보, AI/테크, 비즈니스/금융, 과학/우주)
     const feeds = {
       korea_top: "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko",
       world_breaking: "https://news.google.com/rss/headlines/section/topic/WORLD?hl=ko&gl=KR&ceid=KR:ko",
@@ -72,7 +79,6 @@ Sitemap: ${url.origin}/sitemap.xml
         ""
       ];
 
-      // 카테고리별 10개씩(총 50개) 대량 병렬 수집
       const fetchPromises = Object.entries(feeds).map(async ([category, feedUrl]) => {
         try {
           const resp = await fetch(feedUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -107,7 +113,7 @@ Sitemap: ${url.origin}/sitemap.xml
           headers: {
             "Content-Type": "text/markdown; charset=utf-8",
             "Access-Control-Allow-Origin": "*",
-            "Cache-Control": "public, max-age=180" // 3분 캐싱으로 초고속 응답
+            "Cache-Control": "public, max-age=180"
           }
         });
       }
@@ -128,7 +134,7 @@ Sitemap: ${url.origin}/sitemap.xml
       });
     }
 
-    // 메인 인덱스 페이지: AI 검색엔진을 위한 Schema.org DataFeed JSON-LD 구조화 태그 포함
+    // 메인 인덱스 페이지: AI 크롤러 및 Schema.org DataFeed JSON-LD
     const jsonLd = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "DataFeed",
