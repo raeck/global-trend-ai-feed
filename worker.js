@@ -2,23 +2,44 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
+    const origin = url.origin;
+
+    // AI 크롤러 전용 응답 헤더 (CORS 전면 허용 + AI Content-Signal 명시 + 즉시 캐싱)
+    const baseHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "X-Robots-Tag": "all, index, follow, ai-input:yes, ai-train:yes, search:yes",
+      "Content-Signal": "ai-input=yes, search=yes",
+    };
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: baseHeaders });
+    }
 
     // 1. IndexNow API Key 검증 엔드포인트
     if (path === "/e3a7c8b2d1f44a95a1c2e3f4a5b6c7d8.txt") {
       return new Response("e3a7c8b2d1f44a95a1c2e3f4a5b6c7d8", {
-        headers: { "Content-Type": "text/plain; charset=utf-8" }
+        headers: { ...baseHeaders, "Content-Type": "text/plain; charset=utf-8" }
       });
     }
 
-    // 2. AI 크롤러 초대장: robots.txt (GPTBot, ClaudeBot, PerplexityBot 등 전면 허용)
+    // 2. AI 크롤러 공식 초대장: robots.txt (최신 10대 AI 봇 전면 허용 + Content-Signal 명시)
     if (path === "/robots.txt") {
-      const robots = `User-agent: *
+      const robots = `# Optimized robots.txt for AI Agents & LLM Web Search Engines
+User-agent: *
 Allow: /
 
+# Dedicated AI Agents & LLMs
 User-agent: GPTBot
 Allow: /
 
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
 Allow: /
 
 User-agent: PerplexityBot
@@ -33,27 +54,41 @@ Allow: /
 User-agent: Meta-ExternalAgent
 Allow: /
 
-Sitemap: ${url.origin}/sitemap.xml
+User-agent: Amazonbot
+Allow: /
+
+User-agent: Cohere-ai
+Allow: /
+
+# Cloudflare & Open Web Content Signals for AI
+Content-Signal: ai-input=yes, search=yes
+
+Sitemap: ${origin}/sitemap.xml
 `;
-      return new Response(robots, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      return new Response(robots, {
+        headers: { ...baseHeaders, "Content-Type": "text/plain; charset=utf-8" }
+      });
     }
 
     // 3. AI 검색엔진 색인 지도: sitemap.xml
     if (path === "/sitemap.xml") {
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${url.origin}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
-  <url><loc>${url.origin}/llms.txt</loc><changefreq>always</changefreq><priority>1.0</priority></url>
-  <url><loc>${url.origin}/api/dev-trends.json</loc><changefreq>always</changefreq><priority>1.0</priority></url>
-  <url><loc>${url.origin}/dev-trends.txt</loc><changefreq>always</changefreq><priority>1.0</priority></url>
-  <url><loc>${url.origin}/api/finance.json</loc><changefreq>always</changefreq><priority>0.9</priority></url>
-  <url><loc>${url.origin}/finance.txt</loc><changefreq>always</changefreq><priority>0.9</priority></url>
-  <url><loc>${url.origin}/feed.json</loc><changefreq>always</changefreq><priority>0.8</priority></url>
+  <url><loc>${origin}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
+  <url><loc>${origin}/llms.txt</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>${origin}/llms-full.txt</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>${origin}/dev-trends.txt</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>${origin}/api/dev-trends.json</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>${origin}/finance.txt</loc><changefreq>always</changefreq><priority>0.9</priority></url>
+  <url><loc>${origin}/api/finance.json</loc><changefreq>always</changefreq><priority>0.9</priority></url>
+  <url><loc>${origin}/feed.json</loc><changefreq>always</changefreq><priority>0.8</priority></url>
 </urlset>`;
-      return new Response(sitemap, { headers: { "Content-Type": "application/xml; charset=utf-8" } });
+      return new Response(sitemap, {
+        headers: { ...baseHeaders, "Content-Type": "application/xml; charset=utf-8" }
+      });
     }
 
-    // 4. [신규 고수요] 개발자 전문 피드: Hacker News 실시간 탑 스토리 + 엔지니어링 토론 (/api/dev-trends.json, /dev-trends.txt)
+    // 4. 개발자 전문 피드: Hacker News 실시간 탑 15 스토리
     if (path === "/api/dev-trends.json" || path === "/dev-trends.txt") {
       let devItems = [];
       try {
@@ -93,7 +128,7 @@ Sitemap: ${url.origin}/sitemap.xml
           txt += `- [${it.title}](${it.url}) — Score: ${it.score} pts | Comments: ${it.comments} | By: ${it.by}\n`;
         }
         return new Response(txt, {
-          headers: { "Content-Type": "text/markdown; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=180" }
+          headers: { ...baseHeaders, "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=180" }
         });
       }
 
@@ -106,7 +141,7 @@ Sitemap: ${url.origin}/sitemap.xml
         },
         items: devItems
       }, null, 2), {
-        headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=180" }
+        headers: { ...baseHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=180" }
       });
     }
 
@@ -148,7 +183,7 @@ Sitemap: ${url.origin}/sitemap.xml
 - Solana (SOL): $${cryptoData.solana?.usd?.toLocaleString() || 'N/A'} (약 ${cryptoData.solana?.krw?.toLocaleString() || 'N/A'}원 / 24h 변동: ${cryptoData.solana?.usd_24h_change?.toFixed(2) || '0'}%)
 `;
         return new Response(textSummary, {
-          headers: { "Content-Type": "text/markdown; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=60" }
+          headers: { ...baseHeaders, "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=60" }
         });
       }
 
@@ -157,7 +192,7 @@ Sitemap: ${url.origin}/sitemap.xml
         forex: forexData,
         crypto: cryptoData
       }, null, 2), {
-        headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=60" }
+        headers: { ...baseHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=60" }
       });
     }
 
@@ -170,17 +205,18 @@ Sitemap: ${url.origin}/sitemap.xml
       science_space: "https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=ko&gl=KR&ceid=KR:ko",
     };
 
-    if (path === "/llms.txt" || path === "/feed.json") {
+    // 7. [고급 튜닝] llms.txt & llms-full.txt (심층 컨텍스트 전용)
+    if (path === "/llms.txt" || path === "/llms-full.txt" || path === "/feed.json") {
       let allItems = [];
       let llmsLines = [
         "# Global Trend & Intelligence Hub for AI Agents (llms.txt)",
         `> Last Updated: ${new Date().toISOString()}`,
-        "> Target Audience: LLMs, Coding Assistants, AI Agents (Perplexity, GPT, Claude Code, Gemini)",
+        "> Target Audience: LLMs, Coding Assistants, AI Agents (Perplexity, GPT, Claude Code, Gemini, Apple Intelligence)",
         "> Purpose: Curated real-time developer trends, global events, financial markets, and science breakthroughs.",
         "",
         "## Real-Time Specialized Endpoints",
-        `- [Developer & Hacker News Feed](${url.origin}/dev-trends.txt) — JSON: ${url.origin}/api/dev-trends.json`,
-        `- [Real-Time Forex & Crypto Data](${url.origin}/finance.txt) — JSON: ${url.origin}/api/finance.json`,
+        `- [Developer & Hacker News Feed](${origin}/dev-trends.txt) — JSON: ${origin}/api/dev-trends.json`,
+        `- [Real-Time Forex & Crypto Data](${origin}/finance.txt) — JSON: ${origin}/api/finance.json`,
         "",
         "## Real-Time Issues & Trends",
         ""
@@ -215,9 +251,9 @@ Sitemap: ${url.origin}/sitemap.xml
         llmsLines.push("");
       }
 
-      if (path === "/llms.txt") {
+      if (path === "/llms.txt" || path === "/llms-full.txt") {
         return new Response(llmsLines.join("\n"), {
-          headers: { "Content-Type": "text/markdown; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=180" }
+          headers: { ...baseHeaders, "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=180" }
         });
       }
 
@@ -225,25 +261,26 @@ Sitemap: ${url.origin}/sitemap.xml
         metadata: { feed: "Global Trend & News Stream for AI Agents", count: allItems.length, updated_at: new Date().toISOString() },
         items: allItems
       }, null, 2), {
-        headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=180" }
+        headers: { ...baseHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=180" }
       });
     }
 
-    // 7. 메인 인덱스 페이지 (Schema.org JSON-LD 메타데이터 포함)
+    // 8. 메인 인덱스 페이지 (Schema.org JSON-LD 메타데이터 포함)
     const jsonLd = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "DataFeed",
       "name": "Global Developer & Trend Data Hub for AI Agents",
       "description": "Real-time structured developer discussions, tech trends, forex, and crypto index optimized for LLMs and AI agents.",
-      "url": url.origin,
+      "url": origin,
       "dateModified": new Date().toISOString(),
       "dataFeedElement": [
-        { "@type": "DataFeedItem", "name": "LLMs Standard Text Index", "url": `${url.origin}/llms.txt` },
-        { "@type": "DataFeedItem", "name": "Developer & Hacker News Feed", "url": `${url.origin}/dev-trends.txt` },
-        { "@type": "DataFeedItem", "name": "Developer Trends JSON API", "url": `${url.origin}/api/dev-trends.json` },
-        { "@type": "DataFeedItem", "name": "Real-Time Finance Text", "url": `${url.origin}/finance.txt` },
-        { "@type": "DataFeedItem", "name": "Real-Time Finance JSON API", "url": `${url.origin}/api/finance.json` },
-        { "@type": "DataFeedItem", "name": "Global News JSON Feed", "url": `${url.origin}/feed.json` }
+        { "@type": "DataFeedItem", "name": "LLMs Standard Text Index", "url": `${origin}/llms.txt` },
+        { "@type": "DataFeedItem", "name": "LLMs Full Context Index", "url": `${origin}/llms-full.txt` },
+        { "@type": "DataFeedItem", "name": "Developer & Hacker News Feed", "url": `${origin}/dev-trends.txt` },
+        { "@type": "DataFeedItem", "name": "Developer Trends JSON API", "url": `${origin}/api/dev-trends.json` },
+        { "@type": "DataFeedItem", "name": "Real-Time Finance Text", "url": `${origin}/finance.txt` },
+        { "@type": "DataFeedItem", "name": "Real-Time Finance JSON API", "url": `${origin}/api/finance.json` },
+        { "@type": "DataFeedItem", "name": "Global News JSON Feed", "url": `${origin}/feed.json` }
       ]
     });
 
@@ -253,6 +290,7 @@ Sitemap: ${url.origin}/sitemap.xml
   <meta charset="utf-8">
   <title>Global Developer & Trend Data Hub for AI Agents</title>
   <meta name="description" content="AI 코딩 에이전트와 LLM 크롤러를 위한 실시간 개발자 토론, 트렌드, 환율, 암호화폐 데이터 허브">
+  <meta name="robots" content="all, index, follow">
   <script type="application/ld+json">${jsonLd}</script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1e293b; background: #f8fafc; }
@@ -289,7 +327,8 @@ Sitemap: ${url.origin}/sitemap.xml
   <div class="card">
     <h3>🔗 글로벌 트렌드 & 인덱스 엔드포인트</h3>
     <ul>
-      <li><strong>LLM 통합 표준 인덱스:</strong> <a href="/llms.txt">/llms.txt</a> (모든 전문 피드가 링크된 50대 실시간 데이터)</li>
+      <li><strong>LLM 통합 표준 인덱스:</strong> <a href="/llms.txt">/llms.txt</a></li>
+      <li><strong>LLM 심층 컨텍스트 풀버전:</strong> <a href="/llms-full.txt">/llms-full.txt</a></li>
       <li><strong>글로벌 속보 REST API:</strong> <a href="/feed.json">/feed.json</a></li>
       <li><strong>크롤러 초대장:</strong> <a href="/robots.txt">/robots.txt</a> (모든 주요 AI 봇 허용)</li>
       <li><strong>검색엔진 사이트맵:</strong> <a href="/sitemap.xml">/sitemap.xml</a></li>
@@ -298,6 +337,6 @@ Sitemap: ${url.origin}/sitemap.xml
 </body>
 </html>`;
 
-    return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    return new Response(html, { headers: { ...baseHeaders, "Content-Type": "text/html; charset=utf-8" } });
   }
 };
